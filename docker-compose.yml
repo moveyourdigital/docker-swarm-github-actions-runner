@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  runner:
+    build:
+      context: .
+    env_file: .env
+    environment:
+      ACCESS_TOKEN_FILE: /run/secrets/github_access-token
+
+    volumes:
+      - ./access-token:/run/secrets/github_access-token:ro
