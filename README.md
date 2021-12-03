@@ -2,6 +2,8 @@
 
 This Docker image runs a self-hosted GitHub Actions Runner.
 
+**Note:** this image starts up [ephemeral runners](https://docs.github.com/en/actions/hosting-your-own-runners/autoscaling-with-self-hosted-runners#using-ephemeral-runners-for-autoscaling) so they get deregistered after each job finishes.
+
 ### Usage
 1. Clone this repository
 2. Copy `.env.example` to `.env`
