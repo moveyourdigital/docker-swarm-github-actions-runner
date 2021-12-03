@@ -1,0 +1,35 @@
+name: Manual Deployment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64]
+
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: registry.moveyourdigital.dev
+          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+
+      - name: Build and Push to Docker Registry
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: registry.moveyourdigital.dev/github/actions-runner:latest
+          cache-from: |
+            type=registry,ref=registry.moveyourdigital.dev/github/actions-runner:latest-buildcache
+          cache-to: |
+            type=registry,ref=registry.moveyourdigital.dev/github/actions-runner:latest-buildcache,mode=max
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
