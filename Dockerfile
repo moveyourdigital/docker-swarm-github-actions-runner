@@ -1,5 +1,5 @@
 # base
-FROM ubuntu:21.04
+FROM ubuntu:impish-20211102
 
 # set the github runner version
 ARG RUNNER_VERSION="2.287.1"
