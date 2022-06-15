@@ -1,12 +1,28 @@
 version: "3.9"
 
 services:
+  socket:
+    image: tecnativa/docker-socket-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      AUTH: 1
+      BUILD: 1
+      CONTAINERS: 1
+      EXEC: 1
+      IMAGES: 1
+      INFO: 1
+      SESSION: 1
+      CONFIGS: 1
+
   runner:
     build:
       context: .
     env_file: .env
     environment:
+      DOCKER_HOST: socket:2375
       ACCESS_TOKEN_FILE: /run/secrets/github_access-token
 
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./access-token:/run/secrets/github_access-token:ro
