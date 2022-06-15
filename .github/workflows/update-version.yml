@@ -1,4 +1,4 @@
-name: Manual Deployment
+name: Update Version
 
 on:
   workflow_dispatch:
@@ -14,14 +14,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - id: latest_tag
+      - id: fetch-latest-release
         uses: thebritican/fetch-latest-release@v2.0.0
         with:
           github_token: ${{ github.token }}
           repo_path: actions/runner
 
-      - id: output
-        run: "echo 'RUNNER_VERSION=\"${{ steps.latest_tag.outputs.tag_name }}\"'"
+      - id: commit
+        run: |
+          TAG=${{ steps.fetch-latest-release.outputs.tag_name }}
+          sed -i.bak "s/RUNNER_VERSION.*/RUNNER_VERSION=\"${TAG:1}\"/" Dockerfile
+          if [[ `git status -uno --porcelain` ]]; then
+            git config --global user.name 'lightningspirit [Automated 🤖]'
+            git config --global user.email 'lightningspirit@users.noreply.github.com'
+            git commit -am "Bump to $TAG"
+            git push
+          fi
 
       # - name: Update Dockerfile RUNNER_VERSION org
       #   run: sed -i.bak "s/RUNNER_VERSION.*/RUNNER_VERSION=\"${steps.latest_tag.outputs.}\"/" Dockerfile
