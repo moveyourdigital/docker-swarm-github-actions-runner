@@ -33,8 +33,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: registry.moveyourdigital.dev/github/actions-runner:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
