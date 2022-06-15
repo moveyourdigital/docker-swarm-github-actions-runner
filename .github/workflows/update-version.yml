@@ -3,10 +3,10 @@ name: Update Version
 on:
   workflow_dispatch:
   schedule:
-    - cron: '59 23 * * *'
+    - cron: "59 23 * * *"
 
 jobs:
-  release:
+  update-version:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,31 +23,10 @@ jobs:
       - id: commit
         run: |
           TAG=${{ steps.fetch-latest-release.outputs.tag_name }}
-          sed -i.bak "s/RUNNER_VERSION.*/RUNNER_VERSION=\"${TAG:1}\"/" Dockerfile
+          sed -i.bak "s/ARG RUNNER_VERSION.*/ARG RUNNER_VERSION=\"${TAG:1}\"/" Dockerfile
           if [[ `git status -uno --porcelain` ]]; then
             git config --global user.name 'lightningspirit [Automated 🤖]'
             git config --global user.email 'lightningspirit@users.noreply.github.com'
             git commit -am "Bump to $TAG"
             git push
           fi
-
-      # - name: Update Dockerfile RUNNER_VERSION org
-      #   run: sed -i.bak "s/RUNNER_VERSION.*/RUNNER_VERSION=\"${steps.latest_tag.outputs.}\"/" Dockerfile
-
-      # - name: Login to Docker Registry
-      #   uses: docker/login-action@v1
-      #   with:
-      #     registry: registry.moveyourdigital.dev
-      #     username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
-      #     password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
-
-      # - name: Build and Push to Docker Registry
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: .
-      #     platforms: linux/amd64
-      #     push: true
-      #     tags: registry.moveyourdigital.dev/github/actions-runner:latest
-
-      # - name: Image digest
-      #   run: echo ${{ steps.docker_build.outputs.digest }}
