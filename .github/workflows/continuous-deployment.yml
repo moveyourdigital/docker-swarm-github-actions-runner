@@ -27,12 +27,14 @@ jobs:
           password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
 
       - name: Build and Push to Docker Registry
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v2
         with:
           context: .
           platforms: linux/amd64
           push: true
           tags: registry.moveyourdigital.dev/github/actions-runner:latest
+          cache-from: type=registry,ref=github/actions-runner:latest
+          cache-to: type=inline
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
