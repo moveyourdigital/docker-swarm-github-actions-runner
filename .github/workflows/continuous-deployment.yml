@@ -26,6 +26,7 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          network: host
           tags: registry.moveyourdigital.dev/github/actions-runner:latest
           cache-from: type=registry,ref=github/actions-runner:latest
           cache-to: type=inline
