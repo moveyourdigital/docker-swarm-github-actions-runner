@@ -14,11 +14,13 @@ RUN set -ex; \
     apt-get update; \
     apt-get upgrade -y; \
     apt-get install -y --no-install-recommends \
-    git git-lfs curl jq gnupg lsb-release build-essential libssl-dev libffi-dev python3 python3-venv python3-dev apt-transport-https ca-certificates curl software-properties-common; \
-    useradd -m docker; \
-    usermod -a -G root docker; \
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -; \
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu hirsute stable"; \
+    git git-lfs curl jq gnupg lsb-release build-essential libssl-dev libffi-dev python3 python3-venv python3-dev apt-transport-https ca-certificates curl software-properties-common;
+
+RUN useradd -m docker; \
+    usermod -a -G root docker;
+
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -; \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable"; \
     apt-get update; \
     apt-get install docker-ce-cli -y;
 
