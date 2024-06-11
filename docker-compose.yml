@@ -1,6 +1,3 @@
-volumes:
-  data:
-
 secrets:
   # Note: Github personal access token
   #       Not the token for registering self-hosted runner
@@ -31,5 +28,3 @@ services:
     environment:
       DOCKER_HOST: socket:2375
       ACCESS_TOKEN_FILE: /run/secrets/github_access-token
-
-    volumes:
