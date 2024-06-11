@@ -18,6 +18,14 @@ services:
       INFO: 1
       SESSION: 1
       CONFIGS: 1
+    healthcheck:
+      # Test on docker healthcheck endpoint
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2375/v1.35/_ping" ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
 
   runner:
     build:
