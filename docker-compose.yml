@@ -1,4 +1,6 @@
-version: "3.9"
+volumes:
+  data:
+
 secrets:
   # Note: Github personal access token
   #       Not the token for registering self-hosted runner
