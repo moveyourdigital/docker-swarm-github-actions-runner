@@ -5,7 +5,8 @@ REG_TOKEN=$(curl -sX POST -H "Authorization: token $(cat $ACCESS_TOKEN_FILE)" ht
 
 cd /home/docker/actions-runner
 
-./config.sh --url https://github.com/${ORGANIZATION} --token ${REG_TOKEN} --ephemeral
+echo "Configuring ephemeral runner..."
+./config.sh --url https://github.com/${ORGANIZATION} --token ${REG_TOKEN} --ephemeral --disableupdate
 
 cleanup() {
   echo "Removing runner..."
@@ -15,4 +16,5 @@ cleanup() {
 trap 'cleanup; exit 130' INT
 trap 'cleanup; exit 143' TERM
 
+echo "Beginning run script..."
 ./run.sh & wait $!
