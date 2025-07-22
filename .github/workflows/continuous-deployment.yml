@@ -13,7 +13,8 @@ permissions:
 jobs:
   deployment:
     runs-on: ubuntu-latest
-# Removed the strategy.matrix block as it is unnecessary for multi-platform builds
+# Multi-platform builds are achieved using QEMU for emulation and Buildx for building images
+# across multiple architectures. The platforms are specified in the docker/build-push-action step.
 
     steps:
       - uses: actions/checkout@v4
