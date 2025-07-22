@@ -23,7 +23,7 @@ jobs:
       - id: meta
         run: |
           REPO=${{ github.repository }}
-          if [[ "${GITHUB_REF}" == refs/heads/main ]]; then
+          if [[ "${GITHUB_REF}" == refs/heads/main || "${GITHUB_REF}" == refs/heads/master ]]; then
             echo "tags=$REPO:latest" >> $GITHUB_OUTPUT
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG_NAME=${GITHUB_REF#refs/tags/}
