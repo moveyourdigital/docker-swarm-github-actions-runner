@@ -13,7 +13,7 @@ permissions:
 jobs:
   deployment:
     runs-on: ubuntu-latest
-# Removed the strategy.matrix block as it is unnecessary for multi-platform builds.
+# Removed the strategy.matrix block as it is unnecessary for multi-platform builds
 
     steps:
       - uses: actions/checkout@v4
