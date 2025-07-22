@@ -3,14 +3,14 @@ name: Update Version
 on:
   workflow_dispatch:
   schedule:
-    - cron: "59 23 * * *"
+    - cron: "0 0 * * *"
 
 jobs:
   update-version:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
