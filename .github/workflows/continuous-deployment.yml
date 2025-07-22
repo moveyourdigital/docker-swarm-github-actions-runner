@@ -3,34 +3,59 @@ name: Continuous Deployment
 on:
   workflow_dispatch:
   push:
-    branches:
-      - master
+    branches: [master, main]
+    tags: ['*']
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   deployment:
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
+# Multi-platform builds are achieved using QEMU for emulation and Buildx for building images
+# across multiple architectures. The platforms are specified in the docker/build-push-action step.
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Login to Docker Registry
-        uses: docker/login-action@v2
-        with:
-          registry: registry.moveyourdigital.dev
-          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
-          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Build and Push to Docker Registry
-        uses: docker/build-push-action@v2
+      - id: meta
+        run: |
+          REPO="${{ github.repository }}"
+          if [[ "${GITHUB_REF}" == refs/heads/main || "${GITHUB_REF}" == refs/heads/master ]]; then
+            echo "tags=$REPO:latest" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            if git ls-remote --exit-code origin main; then
+              git fetch origin main
+              MAIN_COMMIT=$(git rev-parse origin/main)
+            elif git ls-remote --exit-code origin master; then
+              git fetch origin master
+              MAIN_COMMIT=$(git rev-parse origin/master)
+            else
+              echo "Error: Neither 'main' nor 'master' branch exists in the repository." >&2
+              exit 1
+            fi
+            if [ "$GITHUB_SHA" = "$MAIN_COMMIT" ]; then
+              echo "tags=$REPO:$TAG_NAME,$REPO:latest" >> $GITHUB_OUTPUT
+            else
+              echo "tags=$REPO:$TAG_NAME" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
-          network: host
-          tags: registry.moveyourdigital.dev/github/actions-runner:latest
-          cache-from: type=registry,ref=github/actions-runner:latest
-          cache-to: type=inline
-
-      - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+          tags: ${{ steps.meta.outputs.tags }}
