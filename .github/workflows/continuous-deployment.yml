@@ -30,8 +30,16 @@ jobs:
             echo "tags=$REPO:latest" >> $GITHUB_OUTPUT
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG_NAME=${GITHUB_REF#refs/tags/}
-            git fetch origin main
-            MAIN_COMMIT=$(git rev-parse origin/main)
+            if git ls-remote --exit-code origin main; then
+              git fetch origin main
+              MAIN_COMMIT=$(git rev-parse origin/main)
+            elif git ls-remote --exit-code origin master; then
+              git fetch origin master
+              MAIN_COMMIT=$(git rev-parse origin/master)
+            else
+              echo "Error: Neither 'main' nor 'master' branch exists in the repository." >&2
+              exit 1
+            fi
             if [ "$GITHUB_SHA" = "$MAIN_COMMIT" ]; then
               echo "tags=$REPO:$TAG_NAME,$REPO:latest" >> $GITHUB_OUTPUT
             else
