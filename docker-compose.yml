@@ -10,6 +10,8 @@ services:
     runtime: sysbox-runc
     restart: always
     secrets: [github_access-token]
+    # Time for start.sh to remove the runner registration on stop.
+    stop_grace_period: 30s
     environment:
       ORGANIZATION: ${ORGANIZATION:?set ORGANIZATION in .env}
       ACCESS_TOKEN_FILE: /run/secrets/github_access-token
