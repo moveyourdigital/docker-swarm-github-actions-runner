@@ -4,6 +4,10 @@ set -euo pipefail
 : "${ORGANIZATION:?ORGANIZATION is required}"
 : "${ACCESS_TOKEN_FILE:?ACCESS_TOKEN_FILE is required}"
 
+# A restarted container (Compose) keeps the old runtime state of dockerd.
+# A stale PID file stops dockerd if a new process gets the same PID.
+sudo rm -rf /var/run/docker.pid /var/run/docker.sock /var/run/docker
+
 # Start the inner Docker daemon and wait until it is ready.
 sudo dockerd >/tmp/dockerd.log 2>&1 &
 for _ in $(seq 60); do
@@ -11,7 +15,7 @@ for _ in $(seq 60); do
   sleep 1
 done
 if ! docker info >/dev/null 2>&1; then
-  echo "dockerd did not start. Is the Sysbox runtime in use?" >&2
+  echo "dockerd did not start. Check the log below and the Sysbox runtime." >&2
   cat /tmp/dockerd.log >&2
   exit 1
 fi
