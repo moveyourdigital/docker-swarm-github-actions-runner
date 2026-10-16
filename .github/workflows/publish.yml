@@ -27,7 +27,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           # Only the explicit rule below sets "latest" (not Git tags).
