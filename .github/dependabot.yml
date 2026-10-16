@@ -1,0 +1,8 @@
+# The base image uses the "latest" tag. The scheduled build in publish.yml
+# picks up new base images. Dependabot keeps the action versions current.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

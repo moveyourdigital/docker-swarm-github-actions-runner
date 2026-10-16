@@ -1,38 +1,18 @@
+# Docker Compose deployment (single host with Sysbox installed).
 secrets:
-  # Note: Github personal access token
-  #       Not the token for registering self-hosted runner
   github_access-token:
-    file: ./access-token
+    file: ./access-token   # GitHub PAT. Never commit this file.
 
 services:
-  socket:
-    image: tecnativa/docker-socket-proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      AUTH: 1
-      BUILD: 1
-      CONTAINERS: 1
-      EXEC: 1
-      IMAGES: 1
-      INFO: 1
-      SESSION: 1
-      CONFIGS: 1
-    healthcheck:
-      # Test on docker healthcheck endpoint
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2375/v1.35/_ping" ]
-      interval: 10s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-      start_interval: 2s
-
   runner:
-    build:
-      context: .
-    secrets:
-      - github_access-token
-    env_file: .env
+    build: .
+    image: ghcr.io/moveyourdigital/docker-swarm-github-actions-runner:latest
+    runtime: sysbox-runc
+    restart: always
+    secrets: [github_access-token]
     environment:
-      DOCKER_HOST: socket:2375
+      ORGANIZATION: ${ORGANIZATION:?set ORGANIZATION in .env}
       ACCESS_TOKEN_FILE: /run/secrets/github_access-token
+      RUNNER_LABELS: ${RUNNER_LABELS:-sysbox}
+    deploy:
+      replicas: 3
