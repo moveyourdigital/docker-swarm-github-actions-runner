@@ -51,8 +51,9 @@ docker compose up -d
 Scale: `docker compose up -d --scale runner=5`
 Update: `docker compose pull && docker compose up -d`
 
-The inner Docker data persists while a container lives. Images accumulate.
-Run `docker compose up -d --force-recreate` on a schedule to reset them.
+Compose restarts the same container after each job. `start.sh` deletes the
+inner Docker data (containers, volumes, images) at each start, so jobs do not
+share Docker state. Images are not cached between jobs.
 
 ## Docker Swarm
 

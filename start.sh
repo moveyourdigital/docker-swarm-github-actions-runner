@@ -8,6 +8,10 @@ set -euo pipefail
 # A stale PID file stops dockerd if a new process gets the same PID.
 sudo rm -rf /var/run/docker.pid /var/run/docker.sock /var/run/docker
 
+# It also keeps the inner Docker data (containers, volumes, images) of the
+# previous job. Delete it: each job starts with a clean Docker state.
+sudo find /var/lib/docker -mindepth 1 -delete
+
 # Start the inner Docker daemon and wait until it is ready.
 sudo dockerd >/tmp/dockerd.log 2>&1 &
 for _ in $(seq 60); do
