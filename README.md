@@ -6,6 +6,11 @@ runtime. No `privileged` mode. No access to the host `docker.sock`.
 
 You can deploy with **Docker Compose** or with **Docker Swarm**.
 
+> **Moving to GHCR:** the image is now published to GitHub Container Registry.
+> The Docker Hub image `moveyourdigital/docker-swarm-github-actions-runner`
+> does not get updates anymore. Change your image to
+> `ghcr.io/moveyourdigital/docker-swarm-github-actions-runner`.
+
 Image: `ghcr.io/moveyourdigital/docker-swarm-github-actions-runner`
 (`linux/amd64`, `linux/arm64`). Tags: `latest` (branch `master`), Git tags,
 and the full commit SHA. The image is rebuilt every week to get the latest
