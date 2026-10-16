@@ -10,7 +10,7 @@ sudo rm -rf /var/run/docker.pid /var/run/docker.sock /var/run/docker
 
 # It also keeps the inner Docker data (containers, volumes, images) of the
 # previous job. Delete it: each job starts with a clean Docker state.
-sudo find /var/lib/docker -mindepth 1 -delete
+sudo mkdir -p /var/lib/docker && sudo find /var/lib/docker -mindepth 1 -delete
 
 # Start the inner Docker daemon and wait until it is ready.
 sudo dockerd >/tmp/dockerd.log 2>&1 &
@@ -24,13 +24,17 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-# Get a short-lived registration token with the PAT.
+# Get a short-lived registration or removal token with the PAT.
 # sudo: a Compose file secret keeps its host owner and mode (0600).
-REG_TOKEN=$(curl -fsS -X POST \
-  -H "Authorization: Bearer $(sudo cat "${ACCESS_TOKEN_FILE}")" \
-  -H "Accept: application/vnd.github+json" \
-  "https://api.github.com/orgs/${ORGANIZATION}/actions/runners/registration-token" \
-  | jq -r .token)
+github_token() {
+  curl -fsS -X POST \
+    -H "Authorization: Bearer $(sudo cat "${ACCESS_TOKEN_FILE}")" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/orgs/${ORGANIZATION}/actions/runners/$1-token" \
+    | jq -r .token
+}
+
+REG_TOKEN=$(github_token registration || true)
 if [[ -z "${REG_TOKEN}" || "${REG_TOKEN}" == "null" ]]; then
   echo "Could not get a registration token. Check the PAT and ORGANIZATION." >&2
   exit 1
@@ -48,4 +52,17 @@ rm -f .runner .credentials .credentials_rsaparams
   --labels "${RUNNER_LABELS:-sysbox}" \
   --ephemeral --unattended --replace
 
-exec ./run.sh
+# On container stop, remove the registration. Else an idle runner stays in
+# the list as "offline". A busy runner cannot be removed: GitHub then
+# removes it after the job.
+deregister() {
+  echo "Stopping. Removing the runner registration..."
+  ./config.sh remove --token "$(github_token remove)" || true
+  kill -TERM "${RUNNER_PID}" 2>/dev/null || true
+  exit 143
+}
+trap deregister TERM INT
+
+./run.sh &
+RUNNER_PID=$!
+wait "${RUNNER_PID}"
