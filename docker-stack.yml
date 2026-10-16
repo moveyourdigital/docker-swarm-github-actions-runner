@@ -1,0 +1,21 @@
+# Docker Swarm deployment.
+# WARNING: Swarm ignores the "runtime" option. See "Docker Swarm" in README.md.
+secrets:
+  github_access-token:
+    external: true
+
+services:
+  runner:
+    image: ghcr.io/moveyourdigital/docker-swarm-github-actions-runner:latest
+    secrets: [github_access-token]
+    environment:
+      ORGANIZATION: ${ORGANIZATION:?set ORGANIZATION}
+      ACCESS_TOKEN_FILE: /run/secrets/github_access-token
+      RUNNER_LABELS: ${RUNNER_LABELS:-sysbox}
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.labels.sysbox == true

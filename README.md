@@ -1,16 +1,109 @@
-# GitHub Actions self-hosted Docker Swarm runner
+# GitHub Actions self-hosted runner (Docker Swarm / Docker Compose)
 
-This Docker image runs a self-hosted GitHub Actions Runner.
+Run GitHub Actions self-hosted runners as containers, with a private Docker
+daemon in each runner. The runners use the [Sysbox](https://github.com/nestybox/sysbox)
+runtime. No `privileged` mode. No access to the host `docker.sock`.
 
-**Note:** this image starts up [ephemeral runners](https://docs.github.com/en/actions/hosting-your-own-runners/autoscaling-with-self-hosted-runners#using-ephemeral-runners-for-autoscaling) so they get deregistered after each job finishes.
+You can deploy with **Docker Compose** or with **Docker Swarm**.
 
-### Usage
-1. Clone this repository
-2. Copy `.env.example` to `.env`
-3. Fill up `ORGANIZATION` with your organization name
-4. Get a [GitHub access token](https://github.com/settings/tokens)
-5. Create a secret `access-token` (or whatever) with your newly created token
-6. Point `ACCESS_TOKEN_FILE` to the secret path `/run/secrets/access-token`
-7. Run
+Image: `ghcr.io/moveyourdigital/docker-swarm-github-actions-runner`
+(`linux/amd64`, `linux/arm64`). Tags: `latest` (branch `master`), Git tags,
+and the full commit SHA. The image is rebuilt every week to get the latest
+base image.
 
-If you wish to run it locally, use docker compose and create a file named `access-token` in the root of this project with the token in it.
+## How it works
+
+- Each container starts its own `dockerd`, then registers as an **ephemeral** runner.
+- The runner takes one job, deregisters, and the container restarts with a clean state.
+- Jobs cannot see containers, networks, or images of other runners or of the host.
+
+## Requirements
+
+- Linux host with [Sysbox CE](https://github.com/nestybox/sysbox) installed
+  (the `sysbox-runc` runtime must show in `docker info`).
+- A GitHub personal access token that can manage organization self-hosted
+  runners (fine-grained: *Self-hosted runners: read and write*).
+
+## Configuration
+
+```bash
+cp .env.example .env     # set ORGANIZATION (and RUNNER_LABELS, if needed)
+```
+
+| Variable            | Description                                   | Default  |
+| ------------------- | --------------------------------------------- | -------- |
+| `ORGANIZATION`      | GitHub organization that owns the runners     | required |
+| `RUNNER_LABELS`     | Comma-separated runner labels                 | `sysbox` |
+| `ACCESS_TOKEN_FILE` | Path to the file that holds the PAT           | set in the compose files |
+
+## Docker Compose
+
+```bash
+echo -n '<PAT>' > access-token && chmod 600 access-token
+docker compose up -d
+```
+
+Scale: `docker compose up -d --scale runner=5`
+Update: `docker compose pull && docker compose up -d`
+
+The inner Docker data persists while a container lives. Images accumulate.
+Run `docker compose up -d --force-recreate` on a schedule to reset them.
+
+## Docker Swarm
+
+> **Important:** Docker Swarm does **not** support the `runtime` option for
+> services. You must set Sysbox as the **default runtime** on the node that runs
+> the runners.
+
+1. Install Sysbox on the node.
+2. Label the node:
+
+   ```bash
+   docker node update --label-add sysbox=true <node-name>
+   ```
+
+3. On that node, add this to `/etc/docker/daemon.json`
+   (keep the `runtimes` entry that the Sysbox installer created):
+
+   ```json
+   {
+     "default-runtime": "sysbox-runc"
+   }
+   ```
+
+   Then restart Docker: `sudo systemctl restart docker`.
+
+   **Note:** all services that run on this node now use Sysbox. Use a
+   dedicated node, or check that your other services work with Sysbox.
+
+4. Create the secret and deploy:
+
+   ```bash
+   printf '%s' '<PAT>' | docker secret create github_access-token -
+   set -a; . ./.env; set +a
+   docker stack deploy -c docker-stack.yml runners
+   ```
+
+Scale: `docker service scale runners_runner=5`
+
+## Use in workflows
+
+```yaml
+jobs:
+  build:
+    runs-on: [self-hosted, sysbox]
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build .
+```
+
+## Troubleshooting
+
+- The inner daemon log is in `/tmp/dockerd.log` in the runner container.
+- If `dockerd` does not start, the container does not use Sysbox. Check
+  `docker inspect --format '{{.HostConfig.Runtime}}' <container>`.
+
+## Security notes
+
+- Keep the PAT in a Docker secret or in `access-token`. Never put it in the image or in Git.
+- Self-hosted runners must not run workflows from untrusted forks.
