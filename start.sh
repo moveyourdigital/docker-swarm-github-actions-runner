@@ -17,8 +17,9 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 # Get a short-lived registration token with the PAT.
+# sudo: a Compose file secret keeps its host owner and mode (0600).
 REG_TOKEN=$(curl -fsS -X POST \
-  -H "Authorization: Bearer $(cat "${ACCESS_TOKEN_FILE}")" \
+  -H "Authorization: Bearer $(sudo cat "${ACCESS_TOKEN_FILE}")" \
   -H "Accept: application/vnd.github+json" \
   "https://api.github.com/orgs/${ORGANIZATION}/actions/runners/registration-token" \
   | jq -r .token)
@@ -26,6 +27,10 @@ if [[ -z "${REG_TOKEN}" || "${REG_TOKEN}" == "null" ]]; then
   echo "Could not get a registration token. Check the PAT and ORGANIZATION." >&2
   exit 1
 fi
+
+# A restarted container (Compose) keeps its old local configuration.
+# Remove it. "--replace" then replaces the old server-side registration.
+rm -f .runner .credentials .credentials_rsaparams
 
 # Ephemeral: the runner takes one job, then deregisters itself.
 ./config.sh \
