@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Lint shell scripts
-        run: shellcheck start.sh tests/*.sh
+        run: shellcheck start.sh tests/*.sh .github/scripts/*.sh
 
       - name: Install Sysbox
         run: |

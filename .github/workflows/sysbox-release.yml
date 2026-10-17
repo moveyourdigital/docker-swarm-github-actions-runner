@@ -1,0 +1,20 @@
+name: Sysbox release check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Open an issue for a new Sysbox release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/sysbox-release-check.sh
