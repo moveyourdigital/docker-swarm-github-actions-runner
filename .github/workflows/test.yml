@@ -1,0 +1,51 @@
+name: Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  SYSBOX_VERSION: 0.7.1
+  SYSBOX_SHA256: 9d6d5484f980d0a17f86c492c1262015c2afb66280bdb97215b79fde6a0261c5
+
+jobs:
+  sysbox:
+    # Pinned: Sysbox must support the runner OS and kernel.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Lint shell scripts
+        run: shellcheck start.sh tests/*.sh
+
+      - name: Install Sysbox
+        run: |
+          deb="sysbox-ce_${SYSBOX_VERSION}.linux_amd64.deb"
+          curl -fsSLo "${deb}" "https://github.com/nestybox/sysbox/releases/download/v${SYSBOX_VERSION}/${deb}"
+          echo "${SYSBOX_SHA256}  ${deb}" | sha256sum -c -
+          # The installer restarts Docker. No container may run.
+          docker ps -aq | xargs -r docker rm -f
+          sudo apt-get update
+          sudo apt-get install -y "./${deb}"
+          docker info --format '{{json .Runtimes}}' | grep -q sysbox-runc
+
+      - name: Build the image
+        run: docker build -t runner:test .
+
+      - name: Compose smoke test
+        run: IMAGE=runner:test tests/compose-smoke.sh
+
+      - name: Set Sysbox as the default runtime (needed by Swarm)
+        run: |
+          sudo jq '. + {"default-runtime": "sysbox-runc"}' /etc/docker/daemon.json > daemon.json
+          sudo mv daemon.json /etc/docker/daemon.json
+          sudo systemctl restart docker
+          docker info --format '{{.DefaultRuntime}}' | grep -qx sysbox-runc
+
+      - name: Swarm smoke test
+        run: IMAGE=runner:test tests/swarm-smoke.sh

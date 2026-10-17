@@ -13,6 +13,7 @@ sudo rm -rf /var/run/docker.pid /var/run/docker.sock /var/run/docker
 sudo mkdir -p /var/lib/docker && sudo find /var/lib/docker -mindepth 1 -delete
 
 # Start the inner Docker daemon and wait until it is ready.
+# shellcheck disable=SC2024 # the log belongs to "runner": this is intended.
 sudo dockerd >/tmp/dockerd.log 2>&1 &
 for _ in $(seq 60); do
   docker info >/dev/null 2>&1 && break
@@ -22,6 +23,13 @@ if ! docker info >/dev/null 2>&1; then
   echo "dockerd did not start. Check the log below and the Sysbox runtime." >&2
   cat /tmp/dockerd.log >&2
   exit 1
+fi
+echo "dockerd is ready."
+
+# For tests only: keep the container up with dockerd, but do not register.
+if [[ "${SKIP_REGISTRATION:-false}" == "true" ]]; then
+  echo "SKIP_REGISTRATION=true: the runner does not register."
+  exec sleep infinity
 fi
 
 # Get a short-lived registration or removal token with the PAT.

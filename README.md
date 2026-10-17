@@ -109,6 +109,25 @@ jobs:
 - If `dockerd` does not start, the container does not use Sysbox. Check
   `docker inspect --format '{{.HostConfig.Runtime}}' <container>`.
 
+## Tests
+
+The `Test` workflow installs Sysbox on a GitHub-hosted runner and runs:
+
+- `tests/compose-smoke.sh`: inner `dockerd`, `docker run`, `docker build`,
+  isolation from the host, and a clean state after a restart.
+- `tests/swarm-smoke.sh`: `docker-stack.yml` on a one-node Swarm, the node
+  label constraint, and the inner `dockerd` under the default runtime.
+
+The tests do not register runners. `SKIP_REGISTRATION=true` keeps a runner
+container up after `dockerd` starts. Use it for tests only.
+
+To run a test on a host with Sysbox:
+
+```bash
+docker build -t runner:test .
+IMAGE=runner:test tests/compose-smoke.sh
+```
+
 ## Security notes
 
 - Keep the PAT in a Docker secret or in `access-token`. Never put it in the image or in Git.
