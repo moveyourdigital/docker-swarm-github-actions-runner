@@ -1,3 +1,4 @@
 .env
 access-token
 github_access-token
+*.pem

@@ -26,8 +26,9 @@ base image.
 
 - Linux host with [Sysbox CE](https://github.com/nestybox/sysbox) installed
   (the `sysbox-runc` runtime must show in `docker info`).
-- A GitHub personal access token that can manage organization self-hosted
-  runners (fine-grained: *Self-hosted runners: read and write*).
+- A way to manage organization self-hosted runners, one of:
+  - a GitHub App (recommended, see [GitHub App](#github-app)), or
+  - a personal access token (fine-grained: *Self-hosted runners: read and write*).
 
 ## Configuration
 
@@ -40,6 +41,9 @@ cp .env.example .env     # set ORGANIZATION (and RUNNER_LABELS, if needed)
 | `ORGANIZATION`      | GitHub organization that owns the runners     | required |
 | `RUNNER_LABELS`     | Comma-separated runner labels                 | `sysbox` |
 | `ACCESS_TOKEN_FILE` | Path to the file that holds the PAT           | set in the compose files |
+| `APP_ID`            | GitHub App ID (with `APP_PRIVATE_KEY_FILE`, replaces the PAT) | none |
+| `APP_PRIVATE_KEY_FILE` | Path to the GitHub App private key (`.pem`) | none |
+| `APP_INSTALLATION_ID` | GitHub App installation ID. If not set, the runner gets it from the API. | none |
 
 ## Docker Compose
 
@@ -54,6 +58,42 @@ Update: `docker compose pull && docker compose up -d`
 Compose restarts the same container after each job. `start.sh` deletes the
 inner Docker data (containers, volumes, images) at each start, so jobs do not
 share Docker state. Images are not cached between jobs.
+
+## GitHub App
+
+A GitHub App belongs to the organization, not to a user, and has no
+expiration date. Use it instead of a PAT.
+
+1. In the organization: **Settings → Developer settings → GitHub Apps →
+   New GitHub App**.
+   - Webhook: off.
+   - Permissions: **Organization → Self-hosted runners: Read and write**. No
+     other permissions.
+   - Where can this GitHub App be installed: **Only on this account**.
+2. Note the **App ID**. Generate a **private key** (a `.pem` file).
+3. **Install App** on the organization.
+4. Docker Compose: save the key as `app-key.pem` (`chmod 600`), and create
+   `docker-compose.override.yml`:
+
+   ```yaml
+   secrets:
+     github_app-key:
+       file: ./app-key.pem   # Never commit this file.
+
+   services:
+     runner:
+       secrets: !override [github_app-key]
+       environment:
+         APP_ID: "123456"
+         APP_PRIVATE_KEY_FILE: /run/secrets/github_app-key
+   ```
+
+   Then: `docker compose up -d --force-recreate`. You can then delete
+   `access-token` and revoke the PAT.
+
+   Docker Swarm: create the secret with
+   `docker secret create github_app-key app-key.pem`, and make the same changes
+   in `docker-stack.yml`.
 
 ## Docker Swarm
 
@@ -115,6 +155,7 @@ The `Test` workflow installs Sysbox on a GitHub-hosted runner and runs:
 
 - `tests/compose-smoke.sh`: inner `dockerd`, `docker run`, `docker build`,
   isolation from the host, and a clean state after a restart.
+- `tests/app-jwt.sh`: the GitHub App JWT (claims and RS256 signature).
 - `tests/swarm-smoke.sh`: `docker-stack.yml` on a one-node Swarm, the node
   label constraint, and the inner `dockerd` under the default runtime.
 
@@ -130,5 +171,6 @@ IMAGE=runner:test tests/compose-smoke.sh
 
 ## Security notes
 
-- Keep the PAT in a Docker secret or in `access-token`. Never put it in the image or in Git.
+- Keep the PAT or the GitHub App private key in a Docker secret or in an untracked
+  file. Never put it in the image or in Git.
 - Self-hosted runners must not run workflows from untrusted forks.
