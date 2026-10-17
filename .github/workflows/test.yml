@@ -37,6 +37,9 @@ jobs:
       - name: Build the image
         run: docker build -t runner:test .
 
+      - name: GitHub App JWT test
+        run: docker run --rm -v "$PWD:/src:ro" --entrypoint /src/tests/app-jwt.sh runner:test
+
       - name: Compose smoke test
         run: IMAGE=runner:test tests/compose-smoke.sh
 

@@ -6,7 +6,7 @@ USER root
 # dockerd runs INSIDE the container. This needs the Sysbox runtime on the host.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      ca-certificates curl jq git git-lfs iptables \
+      ca-certificates curl jq git git-lfs iptables openssl \
  && curl -fsSL https://get.docker.com | sh \
  && usermod -aG docker runner \
  && rm -rf /var/lib/apt/lists/*

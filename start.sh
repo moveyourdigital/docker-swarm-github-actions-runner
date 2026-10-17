@@ -2,7 +2,12 @@
 set -euo pipefail
 
 : "${ORGANIZATION:?ORGANIZATION is required}"
-: "${ACCESS_TOKEN_FILE:?ACCESS_TOKEN_FILE is required}"
+
+# Authentication: a GitHub App (APP_ID and APP_PRIVATE_KEY_FILE) or a PAT
+# (ACCESS_TOKEN_FILE). The GitHub App has priority.
+if [[ -z "${APP_ID:-}" || -z "${APP_PRIVATE_KEY_FILE:-}" ]]; then
+  : "${ACCESS_TOKEN_FILE:?set ACCESS_TOKEN_FILE, or APP_ID and APP_PRIVATE_KEY_FILE}"
+fi
 
 # A restarted container (Compose) keeps the old runtime state of dockerd.
 # A stale PID file stops dockerd if a new process gets the same PID.
@@ -32,11 +37,46 @@ if [[ "${SKIP_REGISTRATION:-false}" == "true" ]]; then
   exec sleep infinity
 fi
 
-# Get a short-lived registration or removal token with the PAT.
 # sudo: a Compose file secret keeps its host owner and mode (0600).
+
+base64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+
+# A JWT for the GitHub App, valid for 9 minutes (the maximum is 10).
+app_jwt() {
+  local now header payload signature
+  now=$(date +%s)
+  header=$(printf '{"alg":"RS256","typ":"JWT"}' | base64url)
+  payload=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' \
+    $((now - 60)) $((now + 540)) "${APP_ID}" | base64url)
+  signature=$(printf '%s.%s' "${header}" "${payload}" \
+    | sudo openssl dgst -sha256 -sign "${APP_PRIVATE_KEY_FILE}" | base64url)
+  printf '%s.%s.%s' "${header}" "${payload}" "${signature}"
+}
+
+# The token for the GitHub API: a GitHub App installation token (valid for
+# 1 hour), or the PAT.
+api_token() {
+  if [[ -n "${APP_ID:-}" && -n "${APP_PRIVATE_KEY_FILE:-}" ]]; then
+    local jwt installation_id
+    jwt=$(app_jwt)
+    installation_id="${APP_INSTALLATION_ID:-$(curl -fsS \
+      -H "Authorization: Bearer ${jwt}" \
+      -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/orgs/${ORGANIZATION}/installation" | jq -r .id)}"
+    curl -fsS -X POST \
+      -H "Authorization: Bearer ${jwt}" \
+      -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/app/installations/${installation_id}/access_tokens" \
+      | jq -r .token
+  else
+    sudo cat "${ACCESS_TOKEN_FILE}"
+  fi
+}
+
+# Get a short-lived registration or removal token.
 github_token() {
   curl -fsS -X POST \
-    -H "Authorization: Bearer $(sudo cat "${ACCESS_TOKEN_FILE}")" \
+    -H "Authorization: Bearer $(api_token)" \
     -H "Accept: application/vnd.github+json" \
     "https://api.github.com/orgs/${ORGANIZATION}/actions/runners/$1-token" \
     | jq -r .token
@@ -44,7 +84,7 @@ github_token() {
 
 REG_TOKEN=$(github_token registration || true)
 if [[ -z "${REG_TOKEN}" || "${REG_TOKEN}" == "null" ]]; then
-  echo "Could not get a registration token. Check the PAT and ORGANIZATION." >&2
+  echo "Could not get a registration token. Check the PAT or GitHub App, and ORGANIZATION." >&2
   exit 1
 fi
 
