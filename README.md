@@ -159,6 +159,9 @@ The `Test` workflow installs Sysbox on a GitHub-hosted runner and runs:
 - `tests/swarm-smoke.sh`: `docker-stack.yml` on a one-node Swarm, the node
   label constraint, and the inner `dockerd` under the default runtime.
 
+The `Sysbox release check` workflow runs every Monday. It opens an issue when
+a newer Sysbox release exists than the version that the tests use.
+
 The tests do not register runners. `SKIP_REGISTRATION=true` keeps a runner
 container up after `dockerd` starts. Use it for tests only.
 
